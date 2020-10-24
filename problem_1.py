@@ -8,7 +8,7 @@ img = cv2.imread('./test.jpg', cv2.IMREAD_COLOR)
 # check it has loaded
 
 def light_leak():
-
+    global img
     if not img is None:
 
         # Now we need to generate the light streak - randomly generating some y = mx + c
@@ -28,24 +28,32 @@ def light_leak():
 
         width = 30
         attenuation = 5
-        bright_factor = 1.7
+        bright_factor = 2
+        blend_factor = 0.8
+
+        mask = np.zeros(img.shape, np.uint8)
 
         for y in range(image_y):
             for x in range(image_x):
                 dist = abs(c + m*x - y)/math.sqrt(1 + math.pow(m, 2))
+                img.itemset((y, x, 0), max(img.item(y, x, 0)/bright_factor, 0))
+                img.itemset((y, x, 1), max(img.item(y, x, 1)/bright_factor, 0))
+                img.itemset((y, x, 2), max(img.item(y, x, 2)/bright_factor, 0))
                 if dist < width:
-                    img.itemset((y, x, 0), min(img.item(y, x, 0)*bright_factor, 255))
-                    img.itemset((y, x, 1), min(img.item(y, x, 1)*bright_factor, 255))
-                    img.itemset((y, x, 2), min(img.item(y, x, 2)*bright_factor, 255))
+                    mask.itemset((y, x, 0), min(img.item(y, x, 0)*bright_factor, 255))
+                    mask.itemset((y, x, 1), min(img.item(y, x, 1)*bright_factor, 255))
+                    mask.itemset((y, x, 2), min(img.item(y, x, 2)*bright_factor, 255))
                 elif dist < width + attenuation:
                     att_factor = math.pow(bright_factor, 1 - 2*(dist-width)/attenuation)
-                    img.itemset((y, x, 0), min(img.item(y, x, 0)*att_factor, 255))
-                    img.itemset((y, x, 1), min(img.item(y, x, 1)*att_factor, 255))
-                    img.itemset((y, x, 2), min(img.item(y, x, 2)*att_factor, 255))
+                    mask.itemset((y, x, 0), min(img.item(y, x, 0)*att_factor, 255))
+                    mask.itemset((y, x, 1), min(img.item(y, x, 1)*att_factor, 255))
+                    mask.itemset((y, x, 2), min(img.item(y, x, 2)*att_factor, 255))
                 else:
-                    img.itemset((y, x, 0), max(img.item(y, x, 0)/bright_factor, 0))
-                    img.itemset((y, x, 1), max(img.item(y, x, 1)/bright_factor, 0))
-                    img.itemset((y, x, 2), max(img.item(y, x, 2)/bright_factor, 0))
+                    mask.itemset((y, x, 0), max(img.item(y, x, 0)/bright_factor, 0))
+                    mask.itemset((y, x, 1), max(img.item(y, x, 1)/bright_factor, 0))
+                    mask.itemset((y, x, 2), max(img.item(y, x, 2)/bright_factor, 0))
+
+        img = cv2.addWeighted(img, 1-blend_factor, mask, blend_factor, 0)
 
 
         cv2.imshow(windowName, img)
