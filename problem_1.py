@@ -83,10 +83,16 @@ def problem1(img, bright_factor = 2, blend_factor = 0.8, rainbow = False):
                     mask.itemset((y, x, 1), max(img.item(y, x, 1)/bright_factor, 0))
                     mask.itemset((y, x, 2), max(img.item(y, x, 2)/bright_factor, 0)) # Otherwise continue to copy image data through
 
-        img = cv2.addWeighted(img, 1-blend_factor, mask, blend_factor, 0) # Blend the two images together
+        #img = cv2.addWeighted(img, 1-blend_factor, mask, blend_factor, 0) # Blend the two images together
 
+        new_img = np.zeros(img.shape, np.uint8)
+        for y in range(image_y):
+            for x in range(image_x):
+                new_img.itemset((y, x, 0), min(255, img.item(y, x, 0)*(1-blend_factor) + mask.item(y, x, 0)*blend_factor))
+                new_img.itemset((y, x, 1), min(255, img.item(y, x, 1)*(1-blend_factor) + mask.item(y, x, 1)*blend_factor))
+                new_img.itemset((y, x, 2), min(255, img.item(y, x, 2)*(1-blend_factor) + mask.item(y, x, 2)*blend_factor))
 
-        cv2.imshow(windowName, img)
+        cv2.imshow(windowName, new_img)
         key = cv2.waitKey(0)
 
         if (key == ord('x')):
@@ -119,3 +125,4 @@ else:
     if args[2] == "rainbow":
         rainbow = True
     problem1(img, float(args[3]), float(args[4]), rainbow)
+    
