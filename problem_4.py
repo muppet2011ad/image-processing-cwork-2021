@@ -18,11 +18,27 @@ def polar_to_xy(rtheta, centre):
 def clip(val, minimum, maximum):
     return sorted((minimum, val, maximum))[1]
 
+def gaussian_low_pass(img, sigma):
+    channels = cv2.split(img)
+    for i in range(len(channels)):
+        c = channels[i]
+        c_fourier = np.fft.fftshift(np.fft.fft2(c))
+        img_centre = (c_fourier.shape[0]//2, c_fourier.shape[1]//2)
+        for y in range(c_fourier.shape[0]):
+            for x in range(c_fourier.shape[1]):
+                dx = x - img_centre[1]
+                dy = y - img_centre[0]
+                G = math.exp(-(dx**2 + dy**2)/2*(sigma**2))
+                c_fourier.itemset((y, x), c_fourier.item(y, x)*G)
+        channels[i] = np.uint8(np.clip(abs(np.fft.ifft2(np.fft.ifftshift(c_fourier))), 0, 255))
+    return cv2.merge([channels[0], channels[1], channels[2]])
+
+
 def swirlFilter(img, angle, radius, interpolation="nn"):
     image_y, image_x, image_channels = img.shape
     output = np.zeros(img.shape, dtype=np.uint8)
     img_centre = (image_x//2, image_y//2)
-    
+    img = gaussian_low_pass(img, 0.0125)
     for y in range(image_y):
         for x in range(image_x):
             src_coords = [x,y]
