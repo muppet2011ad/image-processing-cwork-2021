@@ -3,6 +3,9 @@ import cv2, random, sys, math, cProfile
 
 # check it has loaded
 
+def clip(val, minimum, maximum):
+    return sorted((minimum, val, maximum))[1]
+
 def problem1(img, bright_factor = 2, blend_factor = 0.8, rainbow = False):
     if not img is None:
 
@@ -54,7 +57,7 @@ def problem1(img, bright_factor = 2, blend_factor = 0.8, rainbow = False):
                         pix_hsv = cv2.cvtColor(pix_bgr, cv2.COLOR_BGR2HSV) # Convert to HSV (rainbows are easier to make by varying hue)
                         pix_hsv.itemset((0, 0, 0), ((dist+width)/(2*width))*max_hue) # Calculate value for hue
                         pix_hsv.itemset((0, 0, 1), sat_factor*max(150, pix_hsv.item(0, 0, 1))) # Saturation should be at least 150, but also no less than the existing saturation
-                        pix_hsv.itemset((0, 0, 2), min(max(100, pix_hsv.item(0, 0, 2)*new_bright_factor), 255)) # Apply brightening effect
+                        pix_hsv.itemset((0, 0, 2), clip(pix_hsv.item(0, 0, 2)*new_bright_factor, 50, 255)) # Apply brightening effect
                         pix_bgr = cv2.cvtColor(pix_hsv, cv2.COLOR_HSV2BGR) # Convert back to BGR
                         mask.itemset((y, x, 0), pix_bgr.item(0, 0, 0))
                         mask.itemset((y, x, 1), pix_bgr.item(0, 0, 1))

@@ -36,13 +36,21 @@ def pencilFilter(img, blend_factor): # Function to apply a pencil filter to a gr
         for x in range(x_dim):
             noise.itemset((y, x), np.clip((1+np.random.normal(0, 0.1))*img.item(y, x), 0, 255)) # Generate random gaussian noise and merge with source
 
-    motion_blur_filter = np.array([[0, 0, 0, 0, 1/5],
-                                [0, 0, 0, 1/5, 0],
-                                [0, 0, 1/5, 0, 0],
-                                [0, 1/5, 0, 0, 0],
-                                [1/5, 0, 0, 0, 0]]) # Image filter for motion blur (just blurs along a line)
+    # motion_blur_filter = np.array([[0, 0, 0, 0, 1/5],
+    #                             [0, 0, 0, 1/5, 0],
+    #                             [0, 0, 1/5, 0, 0],
+    #                             [0, 1/5, 0, 0, 0],
+    #                             [1/5, 0, 0, 0, 0]]) # Image filter for motion blur (just blurs along a line)
 
-    final_mask = applyMask(noise, motion_blur_filter) # Convolves noisy image with motion blur to create effect
+    motion_blur_filter = np.array([[0, 0, 0, 0, 0, 0, 1/14],
+                                   [0, 0, 0, 0, 0, 1/7, 0],
+                                   [0, 0, 0, 0, 1/7, 0, 0],
+                                   [0, 0, 0, 2/7, 0, 0, 0],
+                                   [0, 0, 1/7, 0, 0, 0, 0],
+                                   [0, 1/7, 0, 0, 0 ,0, 0],
+                                   [1/14, 0, 0, 0, 0, 0, 0]]) # Image filter for motion blur (just blurs along a line)
+
+    final_mask = cv2.filter2D(noise, 0, motion_blur_filter) # Convolves noisy image with motion blur to create effect
 
     new_img = np.zeros(img.shape, np.uint8) # Create new output image
     for y in range(y_dim):

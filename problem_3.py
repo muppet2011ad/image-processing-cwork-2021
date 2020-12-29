@@ -43,18 +43,29 @@ def bilateralFilter(img, colour_sigma, space_sigma):
                 output.itemset((y, x, channel), bilateral_numerator_BGR[channel]//bilateral_denominator_BGR[channel])
     return output
 
-                    
+def contrast_stretch(img, a=255, b=0):
+    img_hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    h, s, v = cv2.split(img_hsv)
+    c = np.amax(v)
+    d = np.amin(v)
+    for y in range(v.shape[0]):
+        for x in range(v.shape[1]):
+            v.itemset((y, x), (v.item(y, x)-c)*((a-b)/(c-d))+a)
+    img_hsv = cv2.merge([h, s, v])
+    return cv2.cvtColor(img_hsv, cv2.COLOR_HSV2BGR)
+
 
     
-def beauty_filter(img, colour_sigma=30, space_sigma=20, mode="warm"):
+def problem_3(img, colour_sigma=20, space_sigma=10, mode="warm"):
 
     image_y, image_x, image_channels = img.shape # Get dimensions of image to work with
+
+    img = contrast_stretch(img)
 
     new_img = bilateralFilter(img, colour_sigma, space_sigma) # Apply bilaterial filtering with given parameters
 
     red_adjust = {}
     blue_adjust = {} # Create lookup dictionaries for colour values
-
 
     if mode == "warm": # Generate colour values to "warm" image i.e. drop blue and increase red
         red_pow = 1.04
@@ -90,14 +101,14 @@ if len(args) < 2:
     print("Specify image file.")
 elif len(args) == 2:
     img = cv2.imread(args[1], cv2.IMREAD_COLOR)
-    beauty_filter(img)
+    problem_3(img)
 elif len(args) == 3:
     print("Give both sigma values or neither")
 elif len(args) == 4:
     img = cv2.imread(args[1], cv2.IMREAD_COLOR)
-    beauty_filter(img, int(args[2]), int(args[3]))
+    problem_3(img, int(args[2]), int(args[3]))
 elif len(args) == 5:
     img = cv2.imread(args[1], cv2.IMREAD_COLOR)
-    beauty_filter(img, int(args[2]), int(args[3]), args[4])
+    problem_3(img, int(args[2]), int(args[3]), args[4])
 
 # RECODE BILATERAL FILTER TO DO IT MYSELF

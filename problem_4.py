@@ -33,12 +33,15 @@ def gaussian_low_pass(img, sigma):
         channels[i] = np.uint8(np.clip(abs(np.fft.ifft2(np.fft.ifftshift(c_fourier))), 0, 255))
     return cv2.merge([channels[0], channels[1], channels[2]])
 
+def subtract_image(img1, img2):
+    return np.uint8(abs(np.subtract(img1, img2)))
 
-def swirlFilter(img, angle, radius, interpolation="nn"):
+def problem_4(img, angle=(3*math.pi/4), radius=150, interpolation="nn", prefilter=False):
     image_y, image_x, image_channels = img.shape
     output = np.zeros(img.shape, dtype=np.uint8)
     img_centre = (image_x//2, image_y//2)
-    img = gaussian_low_pass(img, 0.0125)
+    if prefilter:
+        img = gaussian_low_pass(img, 0.0125)
     for y in range(image_y):
         for x in range(image_x):
             src_coords = [x,y]
@@ -75,7 +78,7 @@ def swirlFilter(img, angle, radius, interpolation="nn"):
     return output
 
 test_img = cv2.imread("input_2.jpg", cv2.IMREAD_COLOR)
-out_img = swirlFilter(test_img, 3*math.pi/4, 150, "bi")
+out_img = problem_4(test_img, 3*math.pi/4, 150, "bi", 1)
 
 cv2.imshow("Swirl Filter", out_img) # Show image
 key = cv2.waitKey(0)
