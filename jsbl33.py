@@ -119,8 +119,8 @@ def applyMask(img, mask): # Function to apply square mask to a greyscale image
                     elif pixel_x > image_x -1:
                         pixel_x = 2*(image_x-1) - pixel_x # If the pixel falls outside the image, "reflect" it back into valid coords
 
-                    val += img.item(pixel_y,pixel_x)*mask.item(j,i) # Multiply the pixel by the mask and add it to the sum
-            new_img.itemset((y,x), val) # Copy the result of the sum into the output image
+                    val += img.item(pixel_y,pixel_x)*mask.item(j,i) # Multiply the pixel by the mask and add it to the su
+            new_img.itemset((y,x), int(clip(val, 0, 255))) # Copy the result of the sum into the output image
     return new_img
 
 def pencilFilter(img, blend_factor): # Function to apply a pencil filter to a greyscale image (output image will also be greyscale)
@@ -138,13 +138,13 @@ def pencilFilter(img, blend_factor): # Function to apply a pencil filter to a gr
     #                             [0, 1/5, 0, 0, 0],
     #                             [1/5, 0, 0, 0, 0]]) # Image filter for motion blur (just blurs along a line)
 
-    motion_blur_filter = np.array([[0, 0, 0, 0, 0, 0, 1/14],
-                                   [0, 0, 0, 0, 0, 1/7, 0],
-                                   [0, 0, 0, 0, 1/7, 0, 0],
-                                   [0, 0, 0, 2/7, 0, 0, 0],
-                                   [0, 0, 1/7, 0, 0, 0, 0],
-                                   [0, 1/7, 0, 0, 0 ,0, 0],
-                                   [1/14, 0, 0, 0, 0, 0, 0]]) # Image filter for motion blur (just blurs along a line)
+    motion_blur_filter = np.array([[0, 0, 0, 0, 0, 0, 1./14.],
+                                   [0, 0, 0, 0, 0, 1./7., 0],
+                                   [0, 0, 0, 0, 1./7., 0, 0],
+                                   [0, 0, 0, 2./7., 0, 0, 0],
+                                   [0, 0, 1./7., 0, 0, 0, 0],
+                                   [0, 1./7., 0, 0, 0 ,0, 0],
+                                   [1./14., 0, 0, 0, 0, 0, 0]], dtype=np.float64) # Image filter for motion blur (just blurs along a line)
 
     final_mask = cv2.filter2D(noise, 0, motion_blur_filter) # Convolves noisy image with motion blur to create effect
 
@@ -319,12 +319,12 @@ def problem_4(img, angle=(3*math.pi/4), radius=150, interpolation="nn", prefilte
                 if interpolation == "nn":
                     input_x = clip(round(src_coords[0]), 0, image_x-1)
                     input_y = clip(round(src_coords[1]), 0, image_y-1)
-                    output.itemset((y, x, c), img.item(input_y, input_x, c))
+                    output.itemset((y, x, c), img.item(int(input_y), int(input_x), c))
                 else:
-                    x1 = clip(math.floor(src_coords[0]), 0, image_x-1)
-                    y1 = clip(math.floor(src_coords[1]), 0, image_y-1)
-                    x2 = clip(math.ceil(src_coords[0]), 0, image_x-1)
-                    y2 = clip(math.ceil(src_coords[1]), 0, image_y-1)
+                    x1 = int(clip(math.floor(src_coords[0]), 0, image_x-1))
+                    y1 = int(clip(math.floor(src_coords[1]), 0, image_y-1))
+                    x2 = int(clip(math.ceil(src_coords[0]), 0, image_x-1))
+                    y2 = int(clip(math.ceil(src_coords[1]), 0, image_y-1))
                     input_x = clip(src_coords[0], 0, image_x-1)
                     input_y = clip(src_coords[1], 0, image_y-1)
                     if x2 != x1:
