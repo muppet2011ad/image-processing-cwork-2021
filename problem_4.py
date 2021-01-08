@@ -77,10 +77,12 @@ def problem_4(img, angle=(3*math.pi/4), radius=150, interpolation="nn", prefilte
 
     return output
 
-test_img = cv2.imread("input_2.jpg", cv2.IMREAD_COLOR)
-out_img = problem_4(test_img, 3*math.pi/4, 150, "bi", 1)
+test_img = cv2.imread("input_1.jpg", cv2.IMREAD_COLOR)
+out_img = problem_4(test_img, 3*math.pi/4, 150, "bi")
+inv_img = problem_4(out_img, -3*math.pi/4, 150, "bi")
+diff = subtract_image(test_img, inv_img)
 
-cv2.imshow("Swirl Filter", out_img) # Show image
+cv2.imshow("Swirl Filter - Difference", diff) # Show image
 key = cv2.waitKey(0)
 
 if (key == ord('x')):

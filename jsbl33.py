@@ -237,9 +237,9 @@ def problem_3(img, colour_sigma=20, space_sigma=10, mode="warm"):
 
     image_y, image_x, image_channels = img.shape # Get dimensions of image to work with
 
-    img = contrast_stretch(img)
-
     new_img = bilateralFilter(img, colour_sigma, space_sigma) # Apply bilaterial filtering with given parameters
+
+    new_img = contrast_stretch(new_img)
 
     red_adjust = {}
     blue_adjust = {} # Create lookup dictionaries for colour values

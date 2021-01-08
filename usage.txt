@@ -1,0 +1,45 @@
+# Usage Examples
+
+## Problem 1
+
+* python jsbl33.py 1 [image_file]
+    * Performs light leak with default parameters (darkening coefficient = 2, blending coefficient = 0.8, mode = simple)
+* python jsbl33.py 1 [image_file] [simple/rainbow]
+    * Performs light leak with default parameters (darkening coefficient = 2, blending coefficient = 0.8) and given mode (simple or rainbow)
+    * e.g. "python jsbl33.py 1 image.jpg rainbow"
+* python jsbl33.py 1 [image_file] [simple/rainbow] [darkening_coefficient] [blending_coefficient]
+    * Performs light leak with given parameters
+    * e.g. "python jsbl33.py 1 image.jpg rainbow 1.8 0.82"
+
+## Problem 2
+
+* python jsbl33.py 2 [image_file]
+    * Performs pencil filter with default parameters (blending coefficient = 0.6, colour = b/w)
+* python jsbl33.py 2 [image_file] [blending_coefficient]
+    * Performs pencil filter with given blending coefficient in black and white
+* python jsbl33.py 2 [image_file] [blending_coefficient] colour
+    * Performs pencil filter in colour with given blending_coefficient
+    * e.g. "python jsbl33.py 2 image.jpg 0.7 colour"
+
+## Problem 3
+
+* python jsbl33.py 3 [image_file]
+    * Beautifies image with default parameters (colour sigma = 20, space sigma = 10, warms image)
+* python jsbl33.py 3 [image_file] [colour_sigma] [space_sigma]
+    * Beautifies image with given parameters and defaults to warming the image
+* python jsbl33.py 3 [image_file] [colour_sigma] [space_sigma] [warm/cold]
+    * Beautifies image with given parameters and will warm/cool the image
+    * e.g. "python jsbl33.py 3 image.jpg 15 5 cold"
+
+## Problem 4
+
+* python jsbl33.py 4 [image_file]
+    * Applies swirl filter using default parameters (angle = 3*pi/4, radius = 150, interpolation = "nn", no prefiltering)
+* python jsbl33.py 4 [image_file] [angle] [radius]
+    * Applies swirl filter using given parameters, defaults for others
+* python jsbl33.py 4 [image_file] [angle] [radius] [nn/bi]
+    * Applies swirl filter using given parameters and interpolation mode (nn = nearest neighbour, bi = bilinear interpolation)
+    * e.g. "python jsbl33.py 4 image.jpg 3 200 bi"
+* python jsbl33.py 4 [image_file] [angle] [radius] [nn/bi] prefilter
+    * As above but will apply a Gaussian low-pass filter before applying the swirl filter
+    * e.g. "python jsbl33.py 4 image.jpg 3 200 bi prefilter"
