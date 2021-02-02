@@ -6,94 +6,101 @@ import cv2, random, sys, math, cProfile
 def clip(val, minimum, maximum):
     return sorted((minimum, val, maximum))[1]
 
-def problem_1(img, bright_factor = 2, blend_factor = 0.8, rainbow = False):
-        # Now we need to generate the light streak - randomly generating some y = mx + c
-        # To start with I'll pick two x values in the central 1/3 of the image for the line to go between
+def leak_filter(img, bright_factor = 2, blend_factor = 0.8, rainbow = False):
+    # Now we need to generate the light streak - randomly generating some y = mx + c
+    # To start with I'll pick two x values in the central 1/3 of the image for the line to go between
 
-        image_y, image_x, image_channels = img.shape # Get the dimensions of the image
+    image_y, image_x, image_channels = img.shape # Get the dimensions of the image
 
-        point_1 = (0, random.randint(2*image_x//5, 3*image_x//5))
-        point_2 = (image_y, random.randint(2*image_x//5, 3*image_x//5)) # Pick two random points at the top and bottom of the image
+    point_1 = (0, random.randint(2*image_x//5, 3*image_x//5))
+    point_2 = (image_y, random.randint(2*image_x//5, 3*image_x//5)) # Pick two random points at the top and bottom of the image
 
-        m = sys.maxsize & 2 + 1
-        if point_1[1] != point_2[1]:
-            m = image_y/(point_1[1]-point_2[1])
-        c = image_y - m*point_2[1] # Work out the equation of the line between them
+    m = sys.maxsize & 2 + 1
+    if point_1[1] != point_2[1]:
+        m = image_y/(point_1[1]-point_2[1])
+    c = image_y - m*point_2[1] # Work out the equation of the line between them
 
-        # Compare each pixel against the line
+    # Compare each pixel against the line
 
-        width = 30
-        attenuation = 5 # Good values for making this work
-        max_hue = 160
+    width = 30
+    attenuation = 5 # Good values for making this work
+    max_hue = 160
 
-        mask = np.zeros(img.shape, np.uint8) # Generate a blank image to act as a mask
+    mask = np.zeros(img.shape, np.uint8) # Generate a blank image to act as a mask
 
-        for y in range(image_y):
-            for x in range(image_x): # Iterate through the image
-                dist = abs(c + m*x - y)/math.sqrt(1 + math.pow(m, 2)) # Calculate the distance of between the point (x,y) and the line
-                img.itemset((y, x, 0), max(img.item(y, x, 0)/bright_factor, 0))
-                img.itemset((y, x, 1), max(img.item(y, x, 1)/bright_factor, 0))
-                img.itemset((y, x, 2), max(img.item(y, x, 2)/bright_factor, 0)) # Darken it accordingly
-                if dist < width: # If the resulting distance is less than the width of the beam
-                    new_bright_factor = bright_factor # Get ready to adjust the brightness factor depending on position in the beam
-                    if not rainbow:
-                        if abs(dist) < width/1.5:
-                            new_bright_factor *= 2-(1.5*abs(dist)/width) # This makes the centre of the beam brighter
-                        mask.itemset((y, x, 0), min(img.item(y, x, 0)*new_bright_factor, 255))
-                        mask.itemset((y, x, 1), min(img.item(y, x, 1)*new_bright_factor, 255))
-                        mask.itemset((y, x, 2), min(img.item(y, x, 2)*new_bright_factor, 255)) # Copy brightness data into mask, capping at 255
-                    else: # If we're generating a rainbow, it's a bit more complicated
-                        sat_factor = 1
-                        if abs(dist) < width/3: # We use a narrower bright streak for this
-                            new_bright_factor *= 2-(3*abs(dist)/width)
-                            sat_factor = 0.1+0.9*(3*abs(dist)/width)
-                        if m*x - y + c < 0:
-                            dist = -dist # Work out which side of the line we're on (important for working out hue)
-                        pix_bgr = np.uint8([[[img.item(y, x, 0), img.item(y, x, 1), img.item(y, x , 2)]]]) # Get the value of the pixel
-                        pix_hsv = cv2.cvtColor(pix_bgr, cv2.COLOR_BGR2HSV) # Convert to HSV (rainbows are easier to make by varying hue)
-                        pix_hsv.itemset((0, 0, 0), ((dist+width)/(2*width))*max_hue) # Calculate value for hue
-                        pix_hsv.itemset((0, 0, 1), sat_factor*max(150, pix_hsv.item(0, 0, 1))) # Saturation should be at least 150, but also no less than the existing saturation
-                        pix_hsv.itemset((0, 0, 2), clip(pix_hsv.item(0, 0, 2)*new_bright_factor, 50, 255)) # Apply brightening effect
-                        pix_bgr = cv2.cvtColor(pix_hsv, cv2.COLOR_HSV2BGR) # Convert back to BGR
-                        mask.itemset((y, x, 0), pix_bgr.item(0, 0, 0))
-                        mask.itemset((y, x, 1), pix_bgr.item(0, 0, 1))
-                        mask.itemset((y, x, 2), pix_bgr.item(0, 0, 2)) # Copy pixel data into mask
-                elif dist < width + attenuation: # Smooth transition into normal image makes it look more natural
-                    att_factor = math.pow(bright_factor, 1 - 2*(dist-width)/attenuation) # Function to transition from bright to dark as we move further out
-                    if not rainbow:
-                        mask.itemset((y, x, 0), min(img.item(y, x, 0)*att_factor, 255))
-                        mask.itemset((y, x, 1), min(img.item(y, x, 1)*att_factor, 255))
-                        mask.itemset((y, x, 2), min(img.item(y, x, 2)*att_factor, 255)) # Copy image data to mask
-                    else:
-                        hue = 0 # Min hue at one end
-                        if m*x - y + c > 0:
-                            hue = max_hue # Otherwise max hue
-                        pix_bgr = np.uint8([[[img.item(y, x, 0), img.item(y, x, 1), img.item(y, x , 2)]]]) # Get pixel data from image
-                        pix_hsv = pix_hsv = cv2.cvtColor(pix_bgr, cv2.COLOR_BGR2HSV) # Convert to hsv
-                        pix_hsv.itemset((0, 0, 0), hue) # Set hue
-                        pix_hsv.itemset((0, 0, 1), max((150/bright_factor)*att_factor, pix_hsv.item(0, 0, 1))) # Saturation decided as before but also attenuating
-                        pix_hsv.itemset((0 ,0 ,2), pix_hsv.item(0, 0, 2)*att_factor) # Brightness also attenuates
-                        pix_bgr = cv2.cvtColor(pix_hsv, cv2.COLOR_HSV2BGR) # Convert back to BGR
-                        mask.itemset((y, x, 0), pix_bgr.item(0, 0, 0))
-                        mask.itemset((y, x, 1), pix_bgr.item(0, 0, 1))
-                        mask.itemset((y, x, 2), pix_bgr.item(0, 0, 2)) # Copy pixel data into mask
+    img = np.copy(img)
+
+    for y in range(image_y):
+        for x in range(image_x): # Iterate through the image
+            dist = abs(c + m*x - y)/math.sqrt(1 + math.pow(m, 2)) # Calculate the distance of between the point (x,y) and the line
+            img.itemset((y, x, 0), max(img.item(y, x, 0)/bright_factor, 0))
+            img.itemset((y, x, 1), max(img.item(y, x, 1)/bright_factor, 0))
+            img.itemset((y, x, 2), max(img.item(y, x, 2)/bright_factor, 0)) # Darken it accordingly
+            if dist < width: # If the resulting distance is less than the width of the beam
+                new_bright_factor = bright_factor # Get ready to adjust the brightness factor depending on position in the beam
+                if not rainbow:
+                    if abs(dist) < width/1.5:
+                        new_bright_factor *= 2-(1.5*abs(dist)/width) # This makes the centre of the beam brighter
+                    mask.itemset((y, x, 0), min(img.item(y, x, 0)*new_bright_factor, 255))
+                    mask.itemset((y, x, 1), min(img.item(y, x, 1)*new_bright_factor, 255))
+                    mask.itemset((y, x, 2), min(img.item(y, x, 2)*new_bright_factor, 255)) # Copy brightness data into mask, capping at 255
+                else: # If we're generating a rainbow, it's a bit more complicated
+                    sat_factor = 1
+                    if abs(dist) < width/3: # We use a narrower bright streak for this
+                        new_bright_factor *= 2-(3*abs(dist)/width)
+                        sat_factor = 0.1+0.9*(3*abs(dist)/width)
+                    if m*x - y + c < 0:
+                        dist = -dist # Work out which side of the line we're on (important for working out hue)
+                    pix_bgr = np.uint8([[[img.item(y, x, 0), img.item(y, x, 1), img.item(y, x , 2)]]]) # Get the value of the pixel
+                    pix_hsv = cv2.cvtColor(pix_bgr, cv2.COLOR_BGR2HSV) # Convert to HSV (rainbows are easier to make by varying hue)
+                    pix_hsv.itemset((0, 0, 0), ((dist+width)/(2*width))*max_hue) # Calculate value for hue
+                    pix_hsv.itemset((0, 0, 1), sat_factor*max(150, pix_hsv.item(0, 0, 1))) # Saturation should be at least 150, but also no less than the existing saturation
+                    pix_hsv.itemset((0, 0, 2), clip(pix_hsv.item(0, 0, 2)*new_bright_factor, 50, 255)) # Apply brightening effect
+                    pix_bgr = cv2.cvtColor(pix_hsv, cv2.COLOR_HSV2BGR) # Convert back to BGR
+                    mask.itemset((y, x, 0), pix_bgr.item(0, 0, 0))
+                    mask.itemset((y, x, 1), pix_bgr.item(0, 0, 1))
+                    mask.itemset((y, x, 2), pix_bgr.item(0, 0, 2)) # Copy pixel data into mask
+            elif dist < width + attenuation: # Smooth transition into normal image makes it look more natural
+                att_factor = math.pow(bright_factor, 1 - 2*(dist-width)/attenuation) # Function to transition from bright to dark as we move further out
+                if not rainbow:
+                    mask.itemset((y, x, 0), min(img.item(y, x, 0)*att_factor, 255))
+                    mask.itemset((y, x, 1), min(img.item(y, x, 1)*att_factor, 255))
+                    mask.itemset((y, x, 2), min(img.item(y, x, 2)*att_factor, 255)) # Copy image data to mask
                 else:
-                    mask.itemset((y, x, 0), max(img.item(y, x, 0)/bright_factor, 0))
-                    mask.itemset((y, x, 1), max(img.item(y, x, 1)/bright_factor, 0))
-                    mask.itemset((y, x, 2), max(img.item(y, x, 2)/bright_factor, 0)) # Otherwise continue to copy image data through
+                    hue = 0 # Min hue at one end
+                    if m*x - y + c > 0:
+                        hue = max_hue # Otherwise max hue
+                    pix_bgr = np.uint8([[[img.item(y, x, 0), img.item(y, x, 1), img.item(y, x , 2)]]]) # Get pixel data from image
+                    pix_hsv = pix_hsv = cv2.cvtColor(pix_bgr, cv2.COLOR_BGR2HSV) # Convert to hsv
+                    pix_hsv.itemset((0, 0, 0), hue) # Set hue
+                    pix_hsv.itemset((0, 0, 1), max((150/bright_factor)*att_factor, pix_hsv.item(0, 0, 1))) # Saturation decided as before but also attenuating
+                    pix_hsv.itemset((0 ,0 ,2), pix_hsv.item(0, 0, 2)*att_factor) # Brightness also attenuates
+                    pix_bgr = cv2.cvtColor(pix_hsv, cv2.COLOR_HSV2BGR) # Convert back to BGR
+                    mask.itemset((y, x, 0), pix_bgr.item(0, 0, 0))
+                    mask.itemset((y, x, 1), pix_bgr.item(0, 0, 1))
+                    mask.itemset((y, x, 2), pix_bgr.item(0, 0, 2)) # Copy pixel data into mask
+            else:
+                mask.itemset((y, x, 0), max(img.item(y, x, 0)/bright_factor, 0))
+                mask.itemset((y, x, 1), max(img.item(y, x, 1)/bright_factor, 0))
+                mask.itemset((y, x, 2), max(img.item(y, x, 2)/bright_factor, 0)) # Otherwise continue to copy image data through
 
-        #img = cv2.addWeighted(img, 1-blend_factor, mask, blend_factor, 0) # Blend the two images together
+    #img = cv2.addWeighted(img, 1-blend_factor, mask, blend_factor, 0) # Blend the two images together
 
-        new_img = np.zeros(img.shape, np.uint8)
-        for y in range(image_y):
-            for x in range(image_x):
-                new_img.itemset((y, x, 0), min(255, img.item(y, x, 0)*(1-blend_factor) + mask.item(y, x, 0)*blend_factor))
-                new_img.itemset((y, x, 1), min(255, img.item(y, x, 1)*(1-blend_factor) + mask.item(y, x, 1)*blend_factor))
-                new_img.itemset((y, x, 2), min(255, img.item(y, x, 2)*(1-blend_factor) + mask.item(y, x, 2)*blend_factor))
+    new_img = np.zeros(img.shape, np.uint8)
+    for y in range(image_y):
+        for x in range(image_x):
+            new_img.itemset((y, x, 0), min(255, img.item(y, x, 0)*(1-blend_factor) + mask.item(y, x, 0)*blend_factor))
+            new_img.itemset((y, x, 1), min(255, img.item(y, x, 1)*(1-blend_factor) + mask.item(y, x, 1)*blend_factor))
+            new_img.itemset((y, x, 2), min(255, img.item(y, x, 2)*(1-blend_factor) + mask.item(y, x, 2)*blend_factor))
 
-        return new_img
+    return new_img
 
-
+def problem1(img, bright_factor = 2, blend_factor = 0.8, rainbow = False):
+    output = leak_filter(img, bright_factor, blend_factor, rainbow)
+    cv2.imshow("Output - problem 1", output)
+    key = cv2.waitKey(0)
+    if key == ord('x'):
+        cv2.destroyAllWindows()
 
 ### Problem 2 code following
 
@@ -156,7 +163,7 @@ def pencilFilter(img, blend_factor): # Function to apply a pencil filter to a gr
 
     return new_img
 
-def problem_2(img, blend_factor=0.6, colour=False):
+def final_pencil_filter(img, blend_factor=0.6, colour=False):
     img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     y_dim, x_dim = img.shape
 
@@ -175,6 +182,12 @@ def problem_2(img, blend_factor=0.6, colour=False):
 
     return new_img
 
+def problem2(img, blend_factor=0.6, colour=False):
+    output = final_pencil_filter(img, blend_factor, colour)
+    cv2.imshow("Output - problem 2", output)
+    key = cv2.waitKey(0)
+    if key == ord('x'):
+        cv2.destroyAllWindows()
 
 ### Problem 3 code following
 
@@ -233,7 +246,7 @@ def contrast_stretch(img, a=255, b=0):
 
 
     
-def problem_3(img, colour_sigma=20, space_sigma=10, mode="warm"):
+def beauty_filter(img, colour_sigma=20, space_sigma=10, mode="warm"):
 
     image_y, image_x, image_channels = img.shape # Get dimensions of image to work with
 
@@ -266,6 +279,12 @@ def problem_3(img, colour_sigma=20, space_sigma=10, mode="warm"):
 
     return new_img
 
+def problem3(img, colour_sigma=20, space_sigma=10, mode="warm"):
+    output = beauty_filter(img, colour_sigma, space_sigma, mode)
+    cv2.imshow("Output - problem 3", output)
+    key = cv2.waitKey(0)
+    if key == ord('x'):
+        cv2.destroyAllWindows()
 
 ### Problem 4 code following
 
@@ -301,7 +320,7 @@ def gaussian_low_pass(img, sigma):
 def subtract_image(img1, img2):
     return np.uint8(abs(np.subtract(img1, img2)))
 
-def problem_4(img, angle=(3*math.pi/4), radius=150, interpolation="nn", prefilter=False):
+def swirl_filter(img, angle=(3*math.pi/4), radius=150, interpolation="nn", prefilter=False):
     image_y, image_x, image_channels = img.shape
     output = np.zeros(img.shape, dtype=np.uint8)
     img_centre = (image_x//2, image_y//2)
@@ -342,6 +361,44 @@ def problem_4(img, angle=(3*math.pi/4), radius=150, interpolation="nn", prefilte
 
     return output
 
+def problem4(img, angle=(3*math.pi/4), radius=150):
+    filter_nn = swirl_filter(img, angle, radius)
+    cv2.imshow("Swirl filter - NN interpolation", filter_nn)
+    key = cv2.waitKey(0)
+    if key == ord('x'):
+        cv2.destroyAllWindows()
+
+    filter_bi = swirl_filter(img, angle, radius, interpolation='bi')
+    cv2.imshow("Swirl filter - bilinear interpolation", filter_bi)
+    key = cv2.waitKey(0)
+    if key == ord('x'):
+        cv2.destroyAllWindows()
+
+    filter_nn_pre = swirl_filter(img, angle, radius, prefilter=True)
+    cv2.imshow("Swirl filter - NN interpolation + prefiltering", filter_nn_pre)
+    key = cv2.waitKey(0)
+    if key == ord('x'):
+        cv2.destroyAllWindows()
+
+    filter_bi_pre = swirl_filter(img, angle, radius, interpolation='bi', prefilter=True)
+    cv2.imshow("Swirl filter - bilinear interpolation + prefiltering", filter_bi_pre)
+    key = cv2.waitKey(0)
+    if key == ord('x'):
+        cv2.destroyAllWindows()
+
+    filter_invert = swirl_filter(filter_bi, -angle, radius, interpolation='bi', prefilter=True)
+    cv2.imshow("Swirl filter - bilinear interpolation (inversed)", filter_invert)
+    key = cv2.waitKey(0)
+    if key == ord('x'):
+        cv2.destroyAllWindows()
+
+    filter_invert_diff = subtract_image(img, filter_invert)
+    cv2.imshow("Swirl filter - difference between inverse and original", filter_invert_diff)
+    key = cv2.waitKey(0)
+    if key == ord('x'):
+        cv2.destroyAllWindows()
+
+
 
 if __name__ == "__main__":
     problem = int(sys.argv[1])
@@ -353,53 +410,53 @@ if __name__ == "__main__":
     if problem == 1:
         if len(args) == 1:
             print("No filter params given, using defaults.")
-            output = problem_1(img)
+            output = leak_filter(img)
         elif len(args) == 2:
             print("Only rainbow param given, using defaults for others.")
-            output = problem_1(img, rainbow=(args[1]=="rainbow"))
+            output = leak_filter(img, rainbow=(args[1]=="rainbow"))
         elif len(args) < 4:
             print("Please give both brightness/blending parameters or none at all.")
             sys.exit()
         else:
-            output = problem_1(img, float(args[2]), float(args[3]), (args[1]=="rainbow"))
+            output = leak_filter(img, float(args[2]), float(args[3]), (args[1]=="rainbow"))
     elif problem == 2:
         if len(args) == 1:
             print("No filter params given, using defaults.")
-            output = problem_2(img)
+            output = final_pencil_filter(img)
         elif len(args) == 2:
             print("Only blend factor given, defaulting to b/w.")
-            output = problem_2(img, float(args[1]))
+            output = final_pencil_filter(img, float(args[1]))
         else:
-            output = problem_2(img, float(args[1]), args[2] == "colour")
+            output = final_pencil_filter(img, float(args[1]), args[2] == "colour")
     elif problem == 3:
         if len(args) == 1:
             print("No filter params given, using defaults.")
-            output = problem_3(img)
+            output = beauty_filter(img)
         elif len(args) == 2:
             print("Give both sigma values or neither.")
             sys.exit()
         elif len(args) == 3:
             print("No colour temp params given, defaulting to warm")
-            output = problem_3(img, int(args[1]), int(args[2]))
+            output = beauty_filter(img, int(args[1]), int(args[2]))
         else:
-            output = problem_3(img, int(args[1]), int(args[2]), args[3])
+            output = beauty_filter(img, int(args[1]), int(args[2]), args[3])
     elif problem == 4:
         if len(args) == 1:
             print("No filter params given, using defaults.")
-            output = problem_4(img)
+            output = swirl_filter(img)
         elif len(args) == 2:
             print("Provide both swirl parameters or none at all")
             sys.exit()
         elif len(args) == 3:
             print("No interpolation/prefilter params given, defaulting to nearest neighbour and no prefiltering")
-            output = problem_4(img, float(args[1]), int(args[2]))
+            output = swirl_filter(img, float(args[1]), int(args[2]))
         elif len(args) == 4:
             print("Defaulting to no prefiltering")
-            output = problem_4(img, float(args[1]), int(args[2]), args[3])
+            output = swirl_filter(img, float(args[1]), int(args[2]), args[3])
         else:
-            output = problem_4(img, float(args[1]), int(args[2]), args[3], args[4] == "prefilter")
+            output = swirl_filter(img, float(args[1]), int(args[2]), args[3], args[4] == "prefilter")
     
-    cv2.imshow("Output", output)
+    cv2.imshow("Output - final image", output)
     key = cv2.waitKey(0)
     if key == ord('x'):
         cv2.destroyAllWindows()
